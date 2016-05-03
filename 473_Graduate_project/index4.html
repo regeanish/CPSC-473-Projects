@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<head>
+<!-- Compiled and minified CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.6/css/materialize.min.css">
+<!-- Compiled and minified JavaScript -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.6/js/materialize.min.js"></script>
+<!--<link rel="stylesheet" type="text/css" href="styles/style.css">-->
+<link rel="stylesheet" href="screen.css"/>
+</head>
+<body class="teal lighten-2" background="card_image6.jpg">
+<script src="lib/jquery.js"></script>
+<script src="lib/underscore.js"></script>
+<script src="lib/backbone.js"></script>
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script type="text/javascript" src="http://coffeescript.org/extras/coffee-script.js"></script>
+
+<div class="blue-text text-darken-2"><h3>BlackJack<h3></div>
+
+<center><p id="p1">
+<div id="dealerHand"></div>
+<div id="yourDeal"></div>
+<div id="dispScore"><div>Current Score: <span class="digits"> 0  </span> </div><div>Total games Won: <span id="wins">0</span>&nbsp;/&nbsp;<span id="losses">0</span></div></div>
+		
+<a class="waves-effect waves-light btn" class=".buttonHolder" id="hit">Hit</a>
+<a class="waves-effect waves-light btn" class=".buttonHolder" id="stand">Stand</a>
+<a class="waves-effect waves-light btn" class=".buttonHolder" id="deal">Deal</a>
+
+<!--<a class="waves-effect waves-light btn"><i class="material-icons left">cloud</i>button</a>
+<a class="waves-effect waves-light btn"><i class="material-icons right">cloud</i>button</a>-->
+</p>
+</center>
+    <script type="text/coffeescript">
+      
+      
+
+###* This will identify the type of suit for a all the cards which are generated. ###
+
+console.log 'hey anish';
+Card = (suit, number) ->
+
+  @card_num = ->
+    number
+
+
+  @card_suit = ->
+    suit_name = ''
+    switch suit
+      when 1
+        suit_name = 'Hearts'
+      when 2
+        suit_name = 'Clubs'
+      when 3
+        suit_name = 'Spades'
+      when 4
+        suit_name = 'Diamonds'
+    suit_name
+
+
+  @card_type = ->
+    suit_name = ''
+    switch suit
+      when 1
+        suit_name = '&hearts;'
+      when 2
+        suit_name = '&clubs;'
+      when 3
+        suit_name = '&spades;'
+      when 4
+        suit_name = '&diams;'
+    suit_name
+  
+  @card_score = ->
+    value = number
+    if number >= 10
+      value = 10
+    if number == 1
+      value = 11
+    value
+
+  @card_fulltype = ->
+    card_name = ''
+    switch number
+      when 1
+        card_name = 'A'
+      when 13
+        card_name = 'K'
+      when 12
+        card_name = 'Q'
+      when 11
+        card_name = 'J'
+      else
+        card_name = number
+        break
+    card_name + @card_type()
+
+  return
+
+###* This constructor is called for creating new set of cards. ###
+
+Deck = ->
+  cards = []
+
+  new_deal = ->
+    i = undefined
+    suit = undefined
+    number = undefined
+    i = 0
+    while i < 52
+      suit = i % 4 + 1
+      number = i % 13 + 1
+      cards.push new Card(suit, number)
+      i++
+    return
+
+  new_deal()
+
+  @shuffle_cards = ->
+    j = undefined
+    x = undefined
+    i = cards.length
+    while i
+      j = parseInt(Math.random() * i)
+      x = cards[--i]
+      cards[i] = cards[j]
+      cards[j] = x
+    cards
+
+  @getCards = ->
+    cards
+
+  @remove_topcard = ->
+    if !cards.length
+      #console.log("Ran out of cards, new deck");
+      new_deal()
+      @shuffle_cards()
+    cards.pop()
+
+  return
+
+###* This constructor is called to start the game by dealing two cards to the player. ###
+
+Hand = (deck) ->
+  cards = []
+
+  cards.push deck.remove_topcard(), deck.remove_topcard()
+
+  @card_hand = ->
+    cards
+
+  @score = ->
+    i = undefined
+    score = 0
+    cardVal = 0
+    aces = 0
+    # Stores the # of Aces in the Hand
+    i = 0
+    while i < cards.length
+      cardVal = cards[i].card_score()
+      if cardVal == 11
+        aces += 1
+      score += cardVal
+      i++
+
+
+    while score > 21 and aces > 0
+      score -= 10
+      aces -= 1
+    score
+
+  @show_cards = ->
+    arrayOut = []
+    i = undefined
+    i = 0
+    while i < cards.length
+      arrayOut.push cards[i].card_fulltype()
+      i++
+    arrayOut.join()
+
+  @get_card = ->
+    if cards.length < 5
+      cards.push deck.remove_topcard()
+    return
+
+  @show_cardhtml = ->
+    arrayOut = []
+    i = undefined
+    i = 0
+    while i < cards.length
+      arrayOut.push '<div class="card ', cards[i].card_suit(), ' ', cards[i].card_num(), '">', cards[i].card_fulltype(), '</div>'
+      i++
+    arrayOut.join ''
+
+  return
+
+###* Let Play some BJ!! ###
+
+BlackJack = (($) ->
+
+  ### Generates a set of 52 cards categorizing them into 4 different suits by using the following logic: suit = i % 4 + 1, number = i % 13 + 1. ###
+
+  deck = new Deck
+
+  wins = 0
+  losses = 0
+
+  winner = (userHand, dealer_cards) ->
+    outcome = ''
+    dealer_score = dealer_cards.score()
+    user_score = userHand.score()
+
+    ### Rules for playing the game. ###
+
+    if user_score > 21 or dealer_score == 21
+      outcome = 'Sorry you lose. Maybe Next time!!'
+      losses++
+      
+      ### a special case win when the player wins just by reaching 5 cards without busting(called 5-card Charlie). ###
+    
+    else if user_score <= 21 and userHand.card_hand().length >= 5
+      outcome = 'Its a 5-card win Charlie!! Wohoo!!'
+      wins++
+    else if dealer_score > 21 or user_score == 21 or user_score > dealer_cards.score()
+      outcome = 'You won! Wohoo!!'
+      wins++
+    else if dealer_score > user_score
+      outcome = 'Sorry you lose. Maybe Next time!!'
+      losses++
+    else if dealer_score == user_score
+      outcome = 'OOPS!! Its a tie!'
+
+    ### display the result for the round. ###
+
+    outcome + '<br />Dealer Score: ' + dealer_cards.score() + '<br />My Score: ' + user_score
+
+  ###* Dealer score is randomly generated. ###
+
+  dealer_cards = ->
+    hand = new Hand(deck)
+    while hand.score() < 17 and hand.length < 5
+      hand.get_card()
+    hand
+
+  
+  yourHand = undefined
+
+  $hitButton = $('#hit')
+  $standButton = $('#stand')
+  $dealButton = $('#deal')
+  $score = $('#dispScore')
+  $yourHand = $('#yourDeal')
+  $dealerHand = $('#dealerHand')
+
+
+  disp_dealbtn = ->
+    $hitButton.hide()
+    $standButton.hide()
+    #$score.hide();
+    $dealButton.show()
+    return
+
+  disp_twobtn = ->
+    $hitButton.show()
+    $standButton.show()
+    # $score.show();
+    $dealButton.hide()
+    return
+
+  ###* Updating the score and card display. ###
+
+  update_screen = ->
+
+    $yourHand.html yourHand.show_cardhtml()
+
+    $score.find('.digits').html yourHand.score()
+    $('#wins').text wins
+    $('#losses').text losses
+    return
+
+  ### Deal , Hit and Stand Buttons ###
+
+  $dealButton.on 'click', ->
+    yourHand = new Hand(deck)
+    update_screen()
+    disp_twobtn()
+    return
+
+  $hitButton.on 'click', ->
+    yourHand.get_card()
+    if yourHand.card_hand().length >= 5 or yourHand.score() > 21
+      $standButton.trigger 'click'
+    else
+      update_screen()
+    return
+
+  $standButton.on 'click', ->
+    $yourHand.html winner(yourHand, dealer_cards())
+    disp_dealbtn()
+    return
+
+  ### again shuffle before a new start. ###
+
+  deck.shuffle_cards()
+  return
+)(jQuery)
+
+</script>
+<!--<script src="game.js"></script>-->
+</body>
+</html>
